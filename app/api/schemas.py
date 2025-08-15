@@ -14,4 +14,4 @@ class CardContent(BaseModel):
 
 class FilterParams(BaseModel):
     order: Literal['desc', 'asc'] = 'desc'
-    sort_by: Literal['created_at', 'id'] = 'id'
+    sort_by: Literal['created_at', 'id', 'title', 'subtitle'] = 'id'

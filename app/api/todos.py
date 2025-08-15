@@ -73,5 +73,5 @@ async def udpate_card(card_id: Annotated[int, Path()],
         await update_card_in_bd(card_id, data)
         return HTTPStatus.OK.value
     except Exception as e:
-        logger.error(ecreate_card_in_bd)
+        logger.error(e)
         return HTTPStatus.BAD.value, e
