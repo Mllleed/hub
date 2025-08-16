@@ -24,16 +24,24 @@ def handle_db_errors(func):
     return wrapper
 
 @asynccontextmanager
+async def get_db_transaction():
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+@asynccontextmanager
 async def get_db_session():
     async with async_session() as session:
-        async with session.begin():
-            try:
-                yield session
-            except Exception:
-                await session.rollback()
-                raise
-            finally:
-                await session.close()
+        try:
+            yield session
+        finally:
+            session.close()
 
 @handle_db_errors
 async def get_card_from_bd(order: str = 'desc',
@@ -82,7 +90,7 @@ async def create_card_in_bd(title: str, subtitle: str, content: str):
     Raises:
         HTTPException: При ошибках валидации или БД
     """
-    async with get_db_session() as session:
+    async with get_db_transaction() as session:
         card = Card(title=title, subtitle=subtitle, content=content)
         session.add(card)
         await session.flush()
@@ -100,7 +108,7 @@ async def delete_card_from_bd(id: int):
     Raises:
         HTTPException: При ошибках валидации или БД
     """
-    async with get_db_session() as session:
+    async with get_db_transaction() as session:
         card = await session.get(Card, id)
         if card is None:
             logger.warning(f'Запись с {id} не найдена')
@@ -125,21 +133,14 @@ async def update_card_in_bd(id: int, data: CardContent):
     Raises:
         HTTPException: При ошибках валидации или БД
     """
-    async with async_session() as session:
-        async with session.begin():
-            stmt = (update(Card)
-                .where(Card.id == id)
-                .values(data.dict(exclude_unset=True)))
-            result = await session.execute(stmt)
+    async with get_db_transaction() as session:
+        stmt = (update(Card)
+            .where(Card.id == id)
+            .values(data.dict(exclude_unset=True)))
+        result = await session.execute(stmt)
 
-            if result.rowcount == 0:
-                await session.rollback()
-                return False
-    #   card = result.scalar_one_or_none()
-
-    #   for field, value in data.dict(exclude_unset=True).items():
-    #       if getattr(card, field) != value:
-    #           setattr(card, field, value) # setattr(class, value, new_value)
+    #if result.rowcount == 0:
+    #   return False
     logger.info(f'Запись с id {id} обновлена')
     return True
 
