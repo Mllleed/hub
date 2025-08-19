@@ -4,8 +4,8 @@ import enum
 import logging
 from db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_card_from_bd, search_cards_in_bd
 from fastapi import APIRouter, Query, Body, Path, HTTPException
-from typing import Optional, Literal, Annotated
-from api.schemas import HTTPStatus, CardContent, FilterParams, CardMeta
+from typing import Optional, Literal, Annotated, List
+from api.schemas import HTTPStatus, CardContent, FilterParams, CardMeta, CardResponse
 router = APIRouter()
 
 """
@@ -34,17 +34,22 @@ async def read_users():
     return {'status': 'ok'}
 
 
-@router.get('/get_card/', tags=['todos'])
+@router.get('/get_card/',
+            tags=['todos'],
+            response_model=List[CardResponse])
 @handle_resp_errors
 async def get_card(sort_param: Annotated[FilterParams, Query()] = None):
     '''Обработчик. Получает сортированный список карточек'''
     if sort_param:
         logger.info(sort_param)
-    res =  await get_card_from_bd()
+    data = sort_param.dict()
+    res =  await get_card_from_bd(**data)
     return res
 
 
-@router.post('/create_card/', tags=['todos'])
+@router.post('/create_card/',
+             tags=['todos'],
+             response_model=CardResponse)
 @handle_resp_errors
 async def create_card(data: Annotated[CardContent, Body(embed=True)],
                       meta: Annotated[CardMeta, Query()]):

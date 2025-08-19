@@ -1,10 +1,10 @@
 from service import Service
 from fastapi import HTTPException
 from functools import wraps
-from sqlalchemy import select, update, asc, desc, inspect, or_
+from sqlalchemy import select, update, asc, desc, inspect, or_, and_
 from sqlalchemy.exc import SQLAlchemyError
 from db import async_session
-from api.schemas import CardContent
+from api.schemas import CardContent, CardResponse
 from api.notes import Card, Category, Tag
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -47,12 +47,16 @@ async def get_db_session():
 
 @handle_db_errors
 async def get_card_from_bd(order: str = 'desc',
-                           sort_by: str = 'created_at') -> list[Card]:
+                           sort_by: str = 'created_at',
+                           cat: Optional[str] = None,
+                           tag: Optional[str] = None) -> list[Card]:
     """Получает все записи из БД и сортирует.
 
     Args:
         order: Оператор сортировки
         sort_by: Параметр сортировки
+        cat: Категория
+        tag: тэг
     Returns:
         cards: Отсортированный список записей
     Raises:
@@ -67,19 +71,27 @@ async def get_card_from_bd(order: str = 'desc',
 
     async with get_db_session() as session:
         stmt = select(Card) # Не использую session.begin() так как никаких изменений
-            
-        if order.lower() == 'desc':
-            stmt = stmt.order_by(desc(getattr(Card, sort_by))) # order_by метод CursorResult
-        else:                                                   #getattr возвращает атрибут модели
-            stmt = stmt.order_by(asc(getattr(Card, sort_by)))
+        if cat and tag:
+            stmt = (
+                    stmt.join(Card.category)
+                        .join(Card.tags)
+                        .where(and_(Category.cat_name == cat, Tag.tag_name == tag))
+                        )
+        elif cat:
+            stmt = stmt.join(Card.category).where(Category.cat_name == cat)
+        elif tag:
+            stmt = stmt.join(Card.tags).where(Tag.tag_name == tag)
 
-        res = await session.execute(stmt)
+        col = getattr(Card, sort_by)
+        stmt = stmt.order_by(desc(col) if order.lower() == 'desc' else asc(col))
+
+        res = await session.execute(stmt.distinct())
         cards = res.scalars().all()
         return cards
 
 @handle_db_errors
 async def create_card_in_bd(title: str, subtitle: str, content: str,
-                            attr: Optional[dict] = None):
+                            attr: Optional[dict] = None) -> Card:
     """Создает новую карточку в БД.
 
     Args:
@@ -104,16 +116,17 @@ async def create_card_in_bd(title: str, subtitle: str, content: str,
                 category = await Service.get_or_create_category(session, attr['cat']) 
 
             if attr.get('tag'):
-                tag_objs = [await Service.get_or_create_tag(session, t) for t in attr['tag']]
+                tag_objs = [
+                            await Service.get_or_create_tag(session, t)
+                            for t in attr['tag']
+                            ]
 
-            card = Card(title=title, subtitle=subtitle, content=content,
-                        category=category, tags=tag_objs)
-        else:
-            card = Card(title=title, subtitle=subtitle, content=content)
+        card = Card(title=title, subtitle=subtitle, content=content,
+                    category=category, tags=tag_objs)
 
 
         session.add(card)
-        session.flush
+        session.flush()
     logger.info(f'Запись с {card.id} создана')
     return card
 

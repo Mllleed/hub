@@ -1,6 +1,7 @@
 import enum
 from pydantic import BaseModel, Field
 from typing import Optional, Literal, List  
+from datetime import datetime
 
 class HTTPStatus(enum.Enum):
     OK = 'GOOG JOB BROTHER'
@@ -34,14 +35,18 @@ class TagResponse(BaseModel):
 
 class CardResponse(BaseModel):
     id: int
-    title: Optional[str] 
-    subtitle: Optional[str]
-    content: Optional[str]
-    category: Optional[CategoryResponse]
-    tags: Optional[List[TagResponse]]
-
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    content: Optional[str] = None
+    category: Optional[CategoryResponse] = None
+    tags: Optional[List[TagResponse]] = None
+    created_at: datetime
     class Config:
         orm_mode = True
+
+
 class FilterParams(BaseModel):
     order: Literal['desc', 'asc'] = 'desc'
-    sort_by: Literal['created_at', 'id', 'title', 'subtitle', 'category', 'tags '] = 'id'
+    sort_by: Literal['created_at', 'id', 'title', 'subtitle'] = 'id'
+    cat: Optional[str] = None
+    tag: Optional[str] = None

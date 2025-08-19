@@ -9,7 +9,7 @@ class Service():
         category = result.scalar_one_or_none()
 
         if not category:
-            category = Category(cat_name=attr['cat'])
+            category = Category(cat_name=name)
             session.add(category)
         return category
 
