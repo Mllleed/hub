@@ -1,8 +1,8 @@
 from models.base import Base
 from sqlalchemy import func 
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Table
-from sqlalchemy.orm import relationship
-
+from sqlalchemy import Integer, Column, String, DateTime, Text, ForeignKey, Table
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import Optional
 
 tag_table = Table(
     'card_tag',
@@ -14,46 +14,44 @@ tag_table = Table(
 class Card(Base):
     __tablename__ = 'card_object'
 
-    id = Column(Integer, primary_key=True)
-    title = Column(String(30))
-    subtitle = Column(String(16))
-    content = Column(Text)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[Optional[str]] = mapped_column(String(15)) 
+    subtitle: Mapped[Optional[str]] = mapped_column(String(30))
+    content: Mapped[Optional[str]] = mapped_column(Text)
 
-    category_id = Column(Integer, ForeignKey('category.id', ondelete='SET NULL'))
-    category = relationship('Category', back_populates='cards')
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey('category.id', ondelete='SET NULL'))
+    category: Mapped[Optional["Category"]] = relationship('Category', back_populates='cards')
 
-    tags = relationship(
-        'Tag',
+    tags: Mapped[Optional[list["Tag"]]] = relationship(
         secondary=tag_table,
         back_populates='cards',
         passive_deletes=True
     )
 
-    created_at = Column(DateTime(timezone=True),
+    created_at: Mapped[str] = mapped_column(DateTime(timezone=True),
                         server_default=func.now(), nullable=False) 
-    updated_at = Column(DateTime(timezone=True),
+    updated_at: Mapped[str] = mapped_column(DateTime(timezone=True),
                         server_default=func.now(), onupdate=func.now())
     
 
 class Category(Base):
     __tablename__ = 'category'
 
-    id = Column(Integer, primary_key=True)
-    cat_name = Column(String(12), unique=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cat_name: Mapped[str] = mapped_column(String(12), unique=True)
 
-    cards = relationship(
+    cards: Mapped[list['Card']] = relationship(
         'Card',
         back_populates='category',
-        passive_deletes=True
     )
 
 class Tag(Base):
     __tablename__ = 'tag'
 
-    id = Column(Integer, primary_key=True)
-    tag_name = Column(String(12), unique=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tag_name: Mapped[str] = mapped_column(String(12), unique=True)
 
-    cards = relationship(
+    cards: Mapped[list['Card']] = relationship(
         'Card',
         secondary=tag_table,
         back_populates='tags',

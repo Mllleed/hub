@@ -2,9 +2,10 @@ from service import Service
 from fastapi import HTTPException
 from functools import wraps
 from sqlalchemy import select, update, asc, desc, inspect, or_, and_
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from db import async_session
-from api.schemas import CardContent, CardResponse
+from api.schemas import CardContent, CardResponse, CardMeta
 from api.notes import Card, Category, Tag
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -18,10 +19,10 @@ def handle_db_errors(func):
         try:
             return await func(*args, **kwargs)
         except SQLAlchemyError as e:
-            logger.error(f'Ошибка в БД {func.__name__}: {e}')
+            logger.error(f'Ошибка в БД {func.__name__}: {e}', exc_info=True)
             raise HTTPException(status_code=500, detail='Ошибка базы данных')
         except Exception as e:
-            logger.critical(f'Критическая ошибка в {func.__name__}: {e}')
+            logger.critical(f'Критическая ошибка в {func.__name__}: {e}', exc_info=True)
             raise HTTPException(status_code=500, detail='Внутрення ошибка сервера')
     return wrapper
 
@@ -46,10 +47,37 @@ async def get_db_session():
             await session.close()
 
 @handle_db_errors
-async def get_card_from_bd(order: str = 'desc',
+async def get_card_by_id_from_bd(card_id: int) -> Card:
+    """Возвращает карточку id
+    
+    Args:
+        card_id: id карточки
+
+    Returns:
+        Card: Карточка
+    Raises:
+        HTTPException: При отсутствии карточки
+    """
+
+    async with get_db_session() as session:
+        stmt = select(Card).options(
+                selectinload(Card.category),
+                 selectinload(Card.tags)).where(Card.id == card_id)
+        logger.debug(stmt)
+        result = await session.execute(stmt)
+        card = result.scalars().first()
+        if card is None:
+            raise HTTPException(status_code=404, detail='Карточка не найдена')
+    return card
+
+
+@handle_db_errors
+async def get_cards_from_bd(order: str = 'desc',
                            sort_by: str = 'created_at',
                            cat: Optional[str] = None,
-                           tag: Optional[str] = None) -> list[Card]:
+                           tag: Optional[str] = None,
+                           limit: int = 5,
+                           offset: int = 0) -> list[Card]:
     """Получает все записи из БД и сортирует.
 
     Args:
@@ -70,7 +98,9 @@ async def get_card_from_bd(order: str = 'desc',
                 detail='Недопустивый параметр сортировки')
 
     async with get_db_session() as session:
-        stmt = select(Card) # Не использую session.begin() так как никаких изменений
+        stmt = select(Card).options(
+                selectinload(Card.category),
+                selectinload(Card.tags))
         if cat and tag:
             stmt = (
                     stmt.join(Card.category)
@@ -84,10 +114,11 @@ async def get_card_from_bd(order: str = 'desc',
 
         col = getattr(Card, sort_by)
         stmt = stmt.order_by(desc(col) if order.lower() == 'desc' else asc(col))
+        stmt = stmt.limit(limit).offset(offset)
 
         res = await session.execute(stmt.distinct())
-        cards = res.scalars().all()
-        return cards
+        cards = res.scalars().unique().all()
+    return cards
 
 @handle_db_errors
 async def create_card_in_bd(title: str, subtitle: str, content: str,
@@ -131,7 +162,7 @@ async def create_card_in_bd(title: str, subtitle: str, content: str,
     return card
 
 @handle_db_errors
-async def delete_card_from_bd(id: int):
+async def delete_card_from_bd(id: int) -> Card:
     """Удаляет карточку в БД.
 
     Args:
@@ -145,14 +176,16 @@ async def delete_card_from_bd(id: int):
         card = await session.get(Card, id)
         if card is None:
             logger.warning(f'Запись с {id} не найдена')
-            return False
-        await session.delete(card)
+            raise HTTPException(status_code=404, detail='Карточка не найдена')
+
+        session.delete(card)
     logger.info(f'Запись с {id} удалена')
-    return True
+    return card
 
 @handle_db_errors
-async def update_card_in_bd(id: int, data: CardContent):
-    """Создает новую карточку в БД.
+async def update_card_in_bd(card_id: int, data: Optional[CardContent] = None,
+                            meta: Optional[CardMeta] = None) -> bool:
+    """Обновляет карточку в БД.
 
     Args:
         id: Первичный ключ записи
@@ -167,25 +200,58 @@ async def update_card_in_bd(id: int, data: CardContent):
         HTTPException: При ошибках валидации или БД
     """
     async with get_db_transaction() as session:
-        stmt = (update(Card)
-            .where(Card.id == id)
-            .values(data.dict(exclude_unset=True)))
-        result = await session.execute(stmt)
+        card = await session.get(Card, card_id)
+        if not card:
+            return False
 
-    #if result.rowcount == 0:
-    #   return False
-    logger.info(f'Запись с id {id} обновлена')
+        if meta and meta.cat:
+            category = await Service.get_or_create_category(session, meta.cat)
+            card.category = category
+
+        if meta and meta.tag:
+            new_tags = set(meta.tag)
+            curent_tags = {t.tag_name: t for t in card.tags}
+
+            for tag_name in new_tags - current_tags.keys():
+                tag = await Service.get_or_create_tag(session, tag_name)
+                card.tags.append(tag)
+                
+            for tag in current_tags.keys() - new_tags:
+                card.tags.remove(current_tags[tag_name])
+
+        if data:
+            for key, value in data.dict(exclude_unset=True).items():
+                setattr(card, key, value)
+
+    logger.info(f'Запись с id {card_id} обновлена')
     return True
 
 @handle_db_errors
-async def search_cards_in_bd(q: str):
+async def search_cards_in_bd(q: str) -> list[Card]:
+    """Поиск карточки по тексту(ilike)
+    
+        Args:
+            q: Текст
+        Raises:
+            HTTPExecption: Если карточка не найдена
+        Returns:
+            list[Card]
+    """
     async with get_db_session() as session:
-        result = await session.execute(select(Card).where(
-            or_(
-                Card.title.ilike(f'%{q}%'),
-                Card.subtitle.ilike(f'%{q}%'),
-                Card.content.ilike(f'%{q}%')
+        stmt = (
+                select(Card)
+                .options(selectinload(Card.category), selectinload(Card.tags))
+                .outerjoin(Card.category)
+                .outerjoin(Card.tags)
+                .where(or_(
+                    Card.title.ilike(f"%{q}%"),
+                    Card.subtitle.ilike(f"%{q}%"),
+                    Card.content.ilike(f"%{q}%"),
+                    Category.cat_name.ilike(f"%{q}%"),
+                    Tag.tag_name.ilike(f"%{q}%"),
+                    ) 
+                       )
                 )
-            )
-        )
-    return result.scalars().all()
+        logger.debug(stmt)
+        result = await session.execute(stmt)
+    return result.scalars().unique().all()
