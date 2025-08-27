@@ -5,8 +5,8 @@ from sqlalchemy import select, update, asc, desc, inspect, or_, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from db import async_session
-from api.schemas import CardContent, CardResponse, CardMeta
-from api.notes import Card, Category, Tag
+from api.schemas import CardContent, CardResponse, CardMeta, UserOut, UserCreate
+from api.notes import Card, Category, Tag, User
 from contextlib import asynccontextmanager
 from typing import Optional
 import logging
@@ -45,6 +45,34 @@ async def get_db_session():
             yield session
         finally:
             await session.close()
+
+
+@handle_db_errors
+async def register_user_in_db(userdata: UserCreate) -> User:
+    """Регистрирует нового пользователя
+
+    Args:
+        userdata:
+            username: Имя пользователя
+            email: Электронная почта
+            password: нехэшированный пароль
+    Returns:
+        User: ORM объект пользователя
+    Raises:
+        HTTPException в случае неудачи регистрации
+    """
+    async with get_db_transaction() as session:
+        user = User(
+                username=userdata.username,
+                email=userdata.email,
+                hashed_password=await Service.hash_password(userdata.password))
+        session.add(user)
+        session.flush()
+        session.refresh(user)
+    return user
+
+
+
 
 @handle_db_errors
 async def get_card_by_id_from_bd(card_id: int) -> Card:

@@ -11,6 +11,16 @@ tag_table = Table(
     Column('tag_id', Integer, ForeignKey('tag.id', ondelete='CASCADE'))
 )
 
+class User(Base):
+    __tablename__ = 'users'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+
+
+
 class Card(Base):
     __tablename__ = 'card_object'
 

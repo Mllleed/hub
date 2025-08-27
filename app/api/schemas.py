@@ -1,12 +1,18 @@
-import enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr, ConfigDict 
 from typing import Optional, Literal, List  
 from datetime import datetime
 
-class HTTPStatus(enum.Enum):
-    OK = 'GOOG JOB BROTHER'
-    BAD = 'NOT GOOD'
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
 
+class UserOut(BaseModel):
+    id: int
+    username: str
+    email: EmailStr 
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class CardContent(BaseModel):
     title: Optional[str] = Field(default=None, description='desc of card', max_length=30)
@@ -23,15 +29,13 @@ class CategoryResponse(BaseModel):
     id: int
     cat_name: Optional[str] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TagResponse(BaseModel):
     id: int
     tag_name: Optional[str] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CardResponse(BaseModel):
     id: int
@@ -41,9 +45,8 @@ class CardResponse(BaseModel):
     category: Optional[CategoryResponse] = None
     tags: Optional[List[TagResponse]] = None
     created_at: datetime
-    class Config:
-        orm_mode = True
-
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class FilterParams(BaseModel):
     order: Literal['desc', 'asc'] = 'desc'

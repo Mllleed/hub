@@ -1,5 +1,8 @@
 from sqlalchemy import select
 from api.notes import Card, Category, Tag
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 class Service():
     @staticmethod
@@ -22,3 +25,11 @@ class Service():
             tag = Tag(tag_name=name)
             session.add(tag)
         return tag
+
+    @staticmethod
+    async def hash_password(password: str) -> str:
+        return pwd_context.hash(password)
+
+    @staticmethod
+    async def verify_method(plain_password: str, hashed_password: str) -> bool:
+        return pwd_context.verify(plain_password, hashed_password)

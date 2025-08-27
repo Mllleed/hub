@@ -2,10 +2,10 @@ from functools import wraps
 import traceback
 import enum
 import logging
-from db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd
+from db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd, register_user_in_db
 from fastapi import APIRouter, Query, Body, Path, HTTPException
-from typing import Optional, Literal, Annotated, List
-from api.schemas import HTTPStatus, CardContent, FilterParams, CardMeta, CardResponse
+from typing import Optional, Literal, Annotated, List, Any
+from api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut
 router = APIRouter()
 
 """
@@ -33,14 +33,26 @@ def handle_resp_errors(func):
 async def read_users():
     return {'status': 'ok'}
 
+
+@router.post('/register/',
+             tags=['todos'],
+             response_model=UserOut)
+@handle_resp_errors
+async def register_user(userdata: UserCreate) -> Any: 
+    """Обработчик. Регистрация пользователя"""
+    result = await register_user_in_db(userdata)
+    return UserOut.model_validate(result)
+    
+
 @router.get('/get_card/{card_id}/',
            tags=['todos'],
            response_model=CardResponse)
 @handle_resp_errors
 async def get_card_by_id(card_id: Annotated[Optional[int], Path()]):
-    """Обработчик. Возвращает карточку по  id"""
+    """Обработчик. Возвращает карточку по id"""
     card = await get_card_by_id_from_bd(card_id)
     return card
+
 
 @router.get('/get_card/',
             tags=['todos'],
