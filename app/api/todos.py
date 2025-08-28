@@ -2,10 +2,10 @@ from functools import wraps
 import traceback
 import enum
 import logging
-from db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd, register_user_in_db
+from db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd, register_user_in_db, login_user_in_db
 from fastapi import APIRouter, Query, Body, Path, HTTPException
 from typing import Optional, Literal, Annotated, List, Any
-from api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut
+from api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, UserIn
 router = APIRouter()
 
 """
@@ -43,6 +43,13 @@ async def register_user(userdata: UserCreate) -> Any:
     result = await register_user_in_db(userdata)
     return UserOut.model_validate(result)
     
+@router.post('/login/',
+             tags=['todos'])
+@handle_resp_errors
+async def login_user(userdata: UserIn) -> Any:
+    """Обработчик. Авторизация пользователя"""
+    result = await login_user_in_db(userdata)
+    return result
 
 @router.get('/get_card/{card_id}/',
            tags=['todos'],

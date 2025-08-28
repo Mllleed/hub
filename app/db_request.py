@@ -5,7 +5,7 @@ from sqlalchemy import select, update, asc, desc, inspect, or_, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from db import async_session
-from api.schemas import CardContent, CardResponse, CardMeta, UserOut, UserCreate
+from api.schemas import CardContent, CardResponse, CardMeta, UserOut, UserCreate, UserIn
 from api.notes import Card, Category, Tag, User
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -71,7 +71,17 @@ async def register_user_in_db(userdata: UserCreate) -> User:
         session.refresh(user)
     return user
 
+@handle_db_errors
+async def login_user_in_db(userdata: UserIn) -> bool:
+    stmt = select(User).where(userdata.username == User.username).limit(1)
+    async with get_db_transaction() as session:
+        result = await session.execute(stmt)
+        user = result.scalars().first()
+    if not user or not await Service.verify_method(userdata.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail='Неверный логин или пароль')
 
+    token = await Service.create_access_token(data={'sub': str(user.id)})
+    return {'access_token': token, 'token_type': 'bearer'}
 
 
 @handle_db_errors
