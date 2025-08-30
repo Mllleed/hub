@@ -96,7 +96,7 @@ async def delete_card(card_id: Annotated[int, Path()]):
     return HTTPStatus.OK.value
 
 
-@router.patch('/update_card/{card_id}')
+@router.patch('/update_card/{card_id}', tags=['todos'])
 @handle_resp_errors
 async def udpate_card(card_id: Annotated[int, Path()],
                       data: Annotated[CardContent, Body(embed=True)] = None,

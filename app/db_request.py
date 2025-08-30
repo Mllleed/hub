@@ -73,8 +73,8 @@ async def register_user_in_db(userdata: UserCreate) -> User:
 
 @handle_db_errors
 async def login_user_in_db(userdata: UserIn) -> bool:
-    stmt = select(User).where(userdata.username == User.username).limit(1)
-    async with get_db_transaction() as session:
+    stmt = select(User).where(User.username == userdata.username).limit(1)
+    async with get_db_session() as session:
         result = await session.execute(stmt)
         user = result.scalars().first()
     if not user or not await Service.verify_method(userdata.password, user.hashed_password):
