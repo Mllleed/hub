@@ -1,12 +1,19 @@
+import aiofiles
 from functools import wraps
 import traceback
 import enum
 import logging
 from app.db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd, register_user_in_db, login_user_in_db
-from fastapi import APIRouter, Query, Body, Path, HTTPException
+from fastapi import APIRouter, Query, Body, Path, HTTPException, Request
 from typing import Optional, Literal, Annotated, List, Any
 from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, UserIn, CookieMeta
+from fastapi.responses import HTMLResponse
+from contextlib import asynccontextmanager
+from fastapi.templating import Jinja2Templates
+
+templates = Jinja2Templates(directory='app/templates')  
 router = APIRouter()
+
 
 """
 Роутер для взаимодействия с карточками
@@ -29,14 +36,16 @@ def handle_resp_errors(func):
     return wrapper
 
 
-@router.get('/', tags=['todos'])
-async def read_users():
-    return {'status': 'ok'}
-
+@router.get('/', tags=['todos'],
+            response_class=HTMLResponse)
+async def index_html(request: Request):
+    return templates.TemplateResponse('index.html', {
+        'request': request})
 
 @router.post('/register/',
              tags=['registration'],
-             response_model=UserOut)
+             response_model=UserOut,
+             status_code=201)
 @handle_resp_errors
 async def register_user(userdata: UserCreate) -> Any: 
     """Обработчик. Регистрация пользователя"""
@@ -86,7 +95,8 @@ async def get_card(sort_param: Annotated[FilterParams, Query()] = None):
 
 @router.post('/create_card/',
              tags=['Card'],
-             response_model=CardResponse)
+             response_model=CardResponse,
+             status_code=201)
 @handle_resp_errors
 async def create_card(data: Annotated[CardContent, Body(embed=True)],
                       meta: Annotated[CardMeta, Query()]):
