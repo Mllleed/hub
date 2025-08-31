@@ -2,6 +2,12 @@ from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from typing import Optional, Literal, List  
 from datetime import datetime
 
+
+class CookieMeta(BaseModel):
+    acces_token: str
+    bearer: str
+
+
 class UserCreate(BaseModel):
     username: str
     email: EmailStr

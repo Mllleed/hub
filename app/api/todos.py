@@ -2,10 +2,10 @@ from functools import wraps
 import traceback
 import enum
 import logging
-from db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd, register_user_in_db, login_user_in_db
+from app.db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd, register_user_in_db, login_user_in_db
 from fastapi import APIRouter, Query, Body, Path, HTTPException
 from typing import Optional, Literal, Annotated, List, Any
-from api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, UserIn
+from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, UserIn, CookieMeta
 router = APIRouter()
 
 """
@@ -35,7 +35,7 @@ async def read_users():
 
 
 @router.post('/register/',
-             tags=['todos'],
+             tags=['registration'],
              response_model=UserOut)
 @handle_resp_errors
 async def register_user(userdata: UserCreate) -> Any: 
@@ -44,15 +44,25 @@ async def register_user(userdata: UserCreate) -> Any:
     return UserOut.model_validate(result)
     
 @router.post('/login/',
-             tags=['todos'])
+             tags=['login'],
+             response_model=CookieMeta)
 @handle_resp_errors
 async def login_user(userdata: UserIn) -> Any:
     """Обработчик. Авторизация пользователя"""
     result = await login_user_in_db(userdata)
+
+    reponse.set_cookie(
+            key='access_token',
+            value=result['access_token'],
+            httponly=True,
+            secure=True,
+            samesite='strict',
+            max_age=60 * 15,
+            )
     return result
 
 @router.get('/get_card/{card_id}/',
-           tags=['todos'],
+           tags=['Card'],
            response_model=CardResponse)
 @handle_resp_errors
 async def get_card_by_id(card_id: Annotated[Optional[int], Path()]):
@@ -62,7 +72,7 @@ async def get_card_by_id(card_id: Annotated[Optional[int], Path()]):
 
 
 @router.get('/get_card/',
-            tags=['todos'],
+            tags=['Card'],
             response_model=List[CardResponse])
 @handle_resp_errors
 async def get_card(sort_param: Annotated[FilterParams, Query()] = None):
@@ -75,7 +85,7 @@ async def get_card(sort_param: Annotated[FilterParams, Query()] = None):
 
 
 @router.post('/create_card/',
-             tags=['todos'],
+             tags=['Card'],
              response_model=CardResponse)
 @handle_resp_errors
 async def create_card(data: Annotated[CardContent, Body(embed=True)],
@@ -88,7 +98,7 @@ async def create_card(data: Annotated[CardContent, Body(embed=True)],
     return card 
 
 
-@router.delete('/delete_card/{card_id}', tags=['todos'])
+@router.delete('/delete_card/{card_id}', tags=['Card'])
 @handle_resp_errors
 async def delete_card(card_id: Annotated[int, Path()]):
     """Обработчик. Удаляет запись по первичному ключу"""
@@ -96,16 +106,16 @@ async def delete_card(card_id: Annotated[int, Path()]):
     return HTTPStatus.OK.value
 
 
-@router.patch('/update_card/{card_id}', tags=['todos'])
+@router.patch('/update_card/{card_id}', tags=['Card'])
 @handle_resp_errors
-async def udpate_card(card_id: Annotated[int, Path()],
+async def update_card(card_id: Annotated[int, Path()],
                       data: Annotated[CardContent, Body(embed=True)] = None,
                       meta: Optional[CardMeta] = None):
     '''Обрабочтик. Частичное обновление записи'''
     await update_card_in_bd(card_id, data, meta)
     return HTTPStatus.OK.value
 
-@router.get('/search_card/', tags=['todos'])
+@router.get('/search_card/', tags=['Card'])
 @handle_resp_errors
 async def search_card(q: Annotated[str, Query(max_length=16)]):
     '''Обработчик. Поиск карточки по тексту'''

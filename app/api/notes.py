@@ -1,5 +1,5 @@
-from models.base import Base
-from sqlalchemy import func 
+from app.base import Base
+from sqlalchemy import func, text
 from sqlalchemy import Integer, Column, String, DateTime, Text, ForeignKey, Table
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Optional
@@ -18,6 +18,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+    
+    is_user: Mapped[bool] = mapped_column(default=True, server_default=text('true'), nullable=False)
+    is_admin: Mapped[bool] = mapped_column(default=False, server_default=text('false'), nullable=False)
 
 
 

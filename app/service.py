@@ -1,12 +1,32 @@
+import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import select
-from api.notes import Card, Category, Tag
+from app.api.notes import Card, Category, Tag
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
-SECRET_KEY = '123'
-ALGORITHM = 'HS256'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+class Settings(BaseSettings):
+    DB_HOST: str
+    DB_SYNC_URL: str
+    DB_PORT: int
+    DB_NAME: str
+    DB_USER: str
+    DB_PASSWORD: str
+    SECRET_KEY: str
+    ALGORITHM: str
+
+    model_config = SettingsConfigDict(
+            env_file=os.path.join(BASE_DIR, ".env"),
+            env_file_encoding="utf-8"
+            )
+
+
+
+settings = Settings()
 
 class Service():
     @staticmethod

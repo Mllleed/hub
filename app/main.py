@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from api import notes, todos
-from db import init_db
+from app.api import notes, todos
+from app.db import init_db
 
 app = FastAPI(title='Mini Hub')
 
@@ -14,3 +14,5 @@ async def startup():
 @app.get('/')
 async def read_root():
     return {'Message': 'Добро пожаловать в MiniHub'}
+
+

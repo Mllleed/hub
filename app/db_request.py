@@ -1,12 +1,12 @@
-from service import Service
+from app.service import Service
 from fastapi import HTTPException
 from functools import wraps
 from sqlalchemy import select, update, asc, desc, inspect, or_, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
-from db import async_session
-from api.schemas import CardContent, CardResponse, CardMeta, UserOut, UserCreate, UserIn
-from api.notes import Card, Category, Tag, User
+from app.db import async_session
+from app.api.schemas import CardContent, CardResponse, CardMeta, UserOut, UserCreate, UserIn, CookieMeta
+from app.api.notes import Card, Category, Tag, User
 from contextlib import asynccontextmanager
 from typing import Optional
 import logging
