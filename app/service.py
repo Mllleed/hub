@@ -63,4 +63,4 @@ class Service():
         to_encode = data.copy()
         expire = datetime.utcnow() + (expires_delta or timedelta(minutes=30))
         to_encode.update({'exp': expire})
-        return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

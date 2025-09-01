@@ -10,10 +10,10 @@ from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, U
 from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse
 
 templates = Jinja2Templates(directory='app/templates')  
 router = APIRouter()
-
 
 """
 Роутер для взаимодействия с карточками
@@ -59,8 +59,8 @@ async def register_user(userdata: UserCreate) -> Any:
 async def login_user(userdata: UserIn) -> Any:
     """Обработчик. Авторизация пользователя"""
     result = await login_user_in_db(userdata)
-
-    reponse.set_cookie(
+    response = JSONResponse(content=result)
+    response.set_cookie(
             key='access_token',
             value=result['access_token'],
             httponly=True,
@@ -68,7 +68,7 @@ async def login_user(userdata: UserIn) -> Any:
             samesite='strict',
             max_age=60 * 15,
             )
-    return result
+    return response
 
 @router.get('/get_card/{card_id}/',
            tags=['Card'],

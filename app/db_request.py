@@ -67,8 +67,8 @@ async def register_user_in_db(userdata: UserCreate) -> User:
                 email=userdata.email,
                 hashed_password=await Service.hash_password(userdata.password))
         session.add(user)
-        session.flush()
-        session.refresh(user)
+        await session.flush()
+        await session.refresh(user)
     return user
 
 @handle_db_errors
