@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel='stylesheet' href="{{ url_for('static', path='/css/style.css') }}">
+  <title>{% block title %}Сайт{% endblock %}</title>
+</head>
+<body>
+  <div class="body_main">
+    <div class="nav_menu"> </div>
+    <div class="main_body"> 
+      <div class="aside_menu">
+        {% include 'aside.html' %}
+      </div>
+      <main class="main">
+        <div class='div_main'> 
+        {% block main %}
+        {% endblock %}
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
+

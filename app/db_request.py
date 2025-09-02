@@ -46,7 +46,10 @@ async def get_db_session():
         finally:
             await session.close()
 
-
+@handle_db_errors
+async def get_my_userdata():
+    async with get_session():
+        pass        
 @handle_db_errors
 async def register_user_in_db(userdata: UserCreate) -> User:
     """Регистрирует нового пользователя

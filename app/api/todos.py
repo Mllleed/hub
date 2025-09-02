@@ -9,10 +9,9 @@ from typing import Optional, Literal, Annotated, List, Any
 from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, UserIn, CookieMeta
 from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
-from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
-
-templates = Jinja2Templates(directory='app/templates')  
+from app.site_data import menu_items
+from app.api.template import templates
 router = APIRouter()
 
 """
@@ -39,8 +38,8 @@ def handle_resp_errors(func):
 @router.get('/', tags=['todos'],
             response_class=HTMLResponse)
 async def index_html(request: Request):
-    return templates.TemplateResponse('index.html', {
-        'request': request})
+    return templates.TemplateResponse('.html', {
+        'request': request,})
 
 @router.post('/register/',
              tags=['registration'],

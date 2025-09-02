@@ -22,7 +22,7 @@ class User(Base):
     is_user: Mapped[bool] = mapped_column(default=True, server_default=text('true'), nullable=False)
     is_admin: Mapped[bool] = mapped_column(default=False, server_default=text('false'), nullable=False)
 
-
+    cards: Mapped['Card'] = relationship('Card', cascade='all, delete-orphan')
 
 class Card(Base):
     __tablename__ = 'card_object'
@@ -31,6 +31,8 @@ class Card(Base):
     title: Mapped[Optional[str]] = mapped_column(String(15)) 
     subtitle: Mapped[Optional[str]] = mapped_column(String(30))
     content: Mapped[Optional[str]] = mapped_column(Text)
+
+    owner_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id'))
 
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey('category.id', ondelete='SET NULL'))
     category: Mapped[Optional["Category"]] = relationship('Category', back_populates='cards')

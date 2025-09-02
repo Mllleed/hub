@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block  title%} Карточки {% endblock%}
+{% block main %}
+<h2 class='card-title'> КАРТОЧКИ МОИ ЙОУ</h2>
+<ul>
+{% for user in cards -%}
+  <li class='cards-list'>{{ user.title}} </li>
+</ul>
+{% endfor %}
+{%- endblock %}
