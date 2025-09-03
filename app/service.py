@@ -4,7 +4,7 @@ from sqlalchemy import select
 from app.api.notes import Category, Tag
 from passlib.context import CryptContext
 from jose import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +61,6 @@ class Service:
     @staticmethod
     async def create_access_token(data: dict, expires_delta: timedelta = None):
         to_encode = data.copy()
-        expire = datetime.now() + (expires_delta or timedelta(minutes=30))
+        expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=30))
         to_encode.update({'exp': expire})
         return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

@@ -1,7 +1,7 @@
 import traceback
 import logging
 from functools import wraps
-from app.db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd, register_user_in_db, login_user_in_db
+from app.DAO import CardDAO, UserDAO
 from fastapi import APIRouter, Query, Body, Path, HTTPException, Request
 from typing import Optional, Annotated, List, Any
 from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, UserIn, CookieMeta
@@ -44,7 +44,7 @@ async def index_html(request: Request):
 @handle_resp_errors
 async def register_user(userdata: UserCreate) -> Any: 
     """Обработчик. Регистрация пользователя"""
-    result = await register_user_in_db(userdata)
+    result = await UserDAO.register_user_in_db(userdata)
     return UserOut.model_validate(result)
     
 @router.post('/login/',
@@ -53,7 +53,7 @@ async def register_user(userdata: UserCreate) -> Any:
 @handle_resp_errors
 async def login_user(userdata: UserIn) -> Any:
     """Обработчик. Авторизация пользователя"""
-    result = await login_user_in_db(userdata)
+    result = await UserDAO.login_user_in_db(userdata)
     response = JSONResponse(content=result)
     response.set_cookie(
             key='access_token',
@@ -71,7 +71,7 @@ async def login_user(userdata: UserIn) -> Any:
 @handle_resp_errors
 async def get_card_by_id(card_id: Annotated[Optional[int], Path()]):
     """Обработчик. Возвращает карточку по id"""
-    card = await get_card_by_id_from_bd(card_id)
+    card = await CardDAO.get_card_by_id_from_bd(card_id)
     return card
 
 
@@ -84,7 +84,7 @@ async def get_card(sort_param: Annotated[FilterParams, Query()] = None):
     if sort_param:
         logger.info(sort_param)
     data = sort_param.model_dump()
-    res =  await get_cards_from_bd(**data)
+    res =  await CardDAO.get_cards_from_bd(**data)
     return res
 
 
@@ -96,7 +96,7 @@ async def get_card(sort_param: Annotated[FilterParams, Query()] = None):
 async def create_card(data: Annotated[CardContent, Body(embed=True)],
                       meta: Annotated[CardMeta, Query()]):
     """Обработчик. Создает карточку в базе данных"""
-    card = await create_card_in_bd(data.title, data.subtitle, data.content,
+    card = await CardDAO.create_card_in_bd(data.title, data.subtitle, data.content,
                                    meta.model_dump())
     return card 
 
@@ -105,7 +105,7 @@ async def create_card(data: Annotated[CardContent, Body(embed=True)],
 @handle_resp_errors
 async def delete_card(card_id: Annotated[int, Path()]):
     """Обработчик. Удаляет запись по первичному ключу"""
-    await delete_card_from_bd(card_id)
+    await CardDAO.delete_card_from_bd(card_id)
     return HTTPException(status_code=204, detail='Картчка удалена')
 
 
@@ -115,11 +115,11 @@ async def update_card(card_id: Annotated[int, Path()],
                       data: Annotated[CardContent, Body(embed=True)] = None,
                       meta: Optional[CardMeta] = None):
     """Обрабочтик. Частичное обновление записи"""
-    await update_card_in_bd(card_id, data, meta)
+    await CardDAO.update_card_in_bd(card_id, data, meta)
     return HTTPException(status_code=200, detail='Обновление выполнено')
 
 @router.get('/search_card/', tags=['Card'])
 @handle_resp_errors
 async def search_card(q: Annotated[str, Query(max_length=16)]):
     """Обработчик. Поиск карточки по тексту"""
-    return await search_cards_in_bd(q)
+    return await CardDAO.search_cards_in_bd(q)

@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse
 from app.api.template import templates
 from app.api.schemas import UserCreate
 from app.site_data import menu_items
-from app.db_request import get_cards_from_bd, register_user_in_db
+from app.DAO import CardDAO, UserDAO
 router = APIRouter()
 
 """Основные обработчик / """
@@ -25,20 +25,23 @@ async def reg_form(
     user = UserCreate(username=username,
                       email=email,
                       password=password)
-    await register_user_in_db(user)
+    await UserDAO.register_user_in_db(user)
     return user
+
+@router.get('/login/', tags=['pages'],
+            response_model=User)
+async def login(authenticate_user: Request):
 
 @router.get('/profile', tags=['pages'],
             response_class=HTMLResponse)
 async def index(request: Request):
-
     return templates.TemplateResponse('index.html', {'request': request})
 
 
 @router.get('/cards/', tags=['pages'],
            response_class=HTMLResponse)
 async def cards(request: Request):
-    card_list = await get_cards_from_bd()
+    card_list = await CardDAO.get_cards_from_bd()
     template = templates.TemplateResponse('user.html', {'request': request,
                                                         'cards': card_list})
     return template
