@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from app.api.template import templates
-from app.api.schemas import CardContent, UserCreate
+from app.api.schemas import UserCreate
 from app.site_data import menu_items
 from app.db_request import get_cards_from_bd, register_user_in_db
 router = APIRouter()
@@ -25,7 +25,7 @@ async def reg_form(
     user = UserCreate(username=username,
                       email=email,
                       password=password)
-    result = await register_user_in_db(user)
+    await register_user_in_db(user)
     return user
 
 @router.get('/profile', tags=['pages'],
@@ -38,7 +38,7 @@ async def index(request: Request):
 @router.get('/cards/', tags=['pages'],
            response_class=HTMLResponse)
 async def cards(request: Request):
-    cards = await get_cards_from_bd()
+    card_list = await get_cards_from_bd()
     template = templates.TemplateResponse('user.html', {'request': request,
-                                                        'cards': cards})
+                                                        'cards': card_list})
     return template

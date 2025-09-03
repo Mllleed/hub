@@ -1,11 +1,11 @@
 from app.service import Service
 from fastapi import HTTPException
 from functools import wraps
-from sqlalchemy import select, update, asc, desc, inspect, or_, and_
+from sqlalchemy import select, asc, desc, inspect, or_, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from app.db import async_session
-from app.api.schemas import CardContent, CardResponse, CardMeta, UserOut, UserCreate, UserIn, CookieMeta
+from app.api.schemas import CardContent, CardMeta, UserCreate, UserIn
 from app.api.notes import Card, Category, Tag, User
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -48,8 +48,9 @@ async def get_db_session():
 
 @handle_db_errors
 async def get_my_userdata():
-    async with get_session():
-        pass        
+    async with get_db_session():
+        pass
+
 @handle_db_errors
 async def register_user_in_db(userdata: UserCreate) -> User:
     """Регистрирует нового пользователя
@@ -75,7 +76,18 @@ async def register_user_in_db(userdata: UserCreate) -> User:
     return user
 
 @handle_db_errors
-async def login_user_in_db(userdata: UserIn) -> bool:
+async def login_user_in_db(userdata: UserIn) -> dict:
+    """ Аутентификация/Авторизация пользователя
+
+    Args:
+        userdata:
+            username: Имя пользователя
+            password: нехэшированный пароль
+    Returns:
+        dict: Данные токена
+    Raises:
+        HTTPException в случае неудачи аутентификации
+    """
     stmt = select(User).where(User.username == userdata.username).limit(1)
     async with get_db_session() as session:
         result = await session.execute(stmt)
@@ -131,7 +143,7 @@ async def get_cards_from_bd(order: str = 'desc',
     Raises:
         HTTPException: При ошибках валидации или БД
     """
-    valid_columns =  {col.key for col in inspect(Card).mapper.column_attrs}
+    valid_columns =  {col.key for col in inspect(Card).mapper.column_attrs()}
 
     if sort_by not in valid_columns:
         raise HTTPException(
@@ -203,24 +215,24 @@ async def create_card_in_bd(title: str, subtitle: str, content: str,
     return card
 
 @handle_db_errors
-async def delete_card_from_bd(id: int) -> Card:
+async def delete_card_from_bd(card_id: int) -> Card:
     """Удаляет карточку в БД.
 
     Args:
-        id: Первичный ключ записи
+        card_id: Первичный ключ записи
     Returns:
         Bool
     Raises:
         HTTPException: При ошибках валидации или БД
     """
     async with get_db_transaction() as session:
-        card = await session.get(Card, id)
+        card = await session.get(Card, card_id)
         if card is None:
-            logger.warning(f'Запись с {id} не найдена')
+            logger.warning(f'Запись с {card_id} не найдена')
             raise HTTPException(status_code=404, detail='Карточка не найдена')
 
         session.delete(card)
-    logger.info(f'Запись с {id} удалена')
+    logger.info(f'Запись с {card_id} удалена')
     return card
 
 @handle_db_errors
@@ -229,12 +241,14 @@ async def update_card_in_bd(card_id: int, data: Optional[CardContent] = None,
     """Обновляет карточку в БД.
 
     Args:
-        id: Первичный ключ записи
+        card_id: Первичный ключ записи
         data: Список заголовков записи:
             title: Заголовок карточки
             subtitle: Подзаголовок
             content: Содержание
-
+        meta:
+            category: Категория
+            tags: Список тэгов
     Returns:
         Bool
     Raises:
@@ -251,17 +265,17 @@ async def update_card_in_bd(card_id: int, data: Optional[CardContent] = None,
 
         if meta and meta.tag:
             new_tags = set(meta.tag)
-            curent_tags = {t.tag_name: t for t in card.tags}
+            current_tags = {t.tag_name: t for t in card.tags}
 
             for tag_name in new_tags - current_tags.keys():
                 tag = await Service.get_or_create_tag(session, tag_name)
                 card.tags.append(tag)
                 
-            for tag in current_tags.keys() - new_tags:
+            for tag_name in current_tags.keys() - new_tags:
                 card.tags.remove(current_tags[tag_name])
 
         if data:
-            for key, value in data.dict(exclude_unset=True).items():
+            for key, value in data.model_dump(exclude_unset=True).items():
                 setattr(card, key, value)
 
     logger.info(f'Запись с id {card_id} обновлена')

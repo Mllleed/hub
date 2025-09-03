@@ -1,7 +1,7 @@
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import select
-from app.api.notes import Card, Category, Tag
+from app.api.notes import Category, Tag
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-class Service():
+class Service:
     @staticmethod
     async def get_or_create_category(session, name: str) -> Category:
         stmt = select(Category).where(Category.cat_name == name)
@@ -61,6 +61,6 @@ class Service():
     @staticmethod
     async def create_access_token(data: dict, expires_delta: timedelta = None):
         to_encode = data.copy()
-        expire = datetime.utcnow() + (expires_delta or timedelta(minutes=30))
+        expire = datetime.now() + (expires_delta or timedelta(minutes=30))
         to_encode.update({'exp': expire})
         return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

@@ -1,16 +1,12 @@
-import aiofiles
-from functools import wraps
 import traceback
-import enum
 import logging
+from functools import wraps
 from app.db_request import create_card_in_bd, delete_card_from_bd, update_card_in_bd, get_cards_from_bd, search_cards_in_bd, get_card_by_id_from_bd, register_user_in_db, login_user_in_db
 from fastapi import APIRouter, Query, Body, Path, HTTPException, Request
-from typing import Optional, Literal, Annotated, List, Any
+from typing import Optional, Annotated, List, Any
 from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, UserIn, CookieMeta
 from fastapi.responses import HTMLResponse
-from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
-from app.site_data import menu_items
 from app.api.template import templates
 router = APIRouter()
 
@@ -84,10 +80,10 @@ async def get_card_by_id(card_id: Annotated[Optional[int], Path()]):
             response_model=List[CardResponse])
 @handle_resp_errors
 async def get_card(sort_param: Annotated[FilterParams, Query()] = None):
-    '''Обработчик. Получает сортированный список карточек'''
+    """Обработчик. Получает сортированный список карточек"""
     if sort_param:
         logger.info(sort_param)
-    data = sort_param.dict()
+    data = sort_param.model_dump()
     res =  await get_cards_from_bd(**data)
     return res
 
@@ -100,10 +96,8 @@ async def get_card(sort_param: Annotated[FilterParams, Query()] = None):
 async def create_card(data: Annotated[CardContent, Body(embed=True)],
                       meta: Annotated[CardMeta, Query()]):
     """Обработчик. Создает карточку в базе данных"""
-    #args = [item[1] for item in data]
-    kwargs = meta.dict()
     card = await create_card_in_bd(data.title, data.subtitle, data.content,
-                                   meta.dict())
+                                   meta.model_dump())
     return card 
 
 
@@ -112,7 +106,7 @@ async def create_card(data: Annotated[CardContent, Body(embed=True)],
 async def delete_card(card_id: Annotated[int, Path()]):
     """Обработчик. Удаляет запись по первичному ключу"""
     await delete_card_from_bd(card_id)
-    return HTTPStatus.OK.value
+    return HTTPException(status_code=204, detail='Картчка удалена')
 
 
 @router.patch('/update_card/{card_id}', tags=['Card'])
@@ -120,12 +114,12 @@ async def delete_card(card_id: Annotated[int, Path()]):
 async def update_card(card_id: Annotated[int, Path()],
                       data: Annotated[CardContent, Body(embed=True)] = None,
                       meta: Optional[CardMeta] = None):
-    '''Обрабочтик. Частичное обновление записи'''
+    """Обрабочтик. Частичное обновление записи"""
     await update_card_in_bd(card_id, data, meta)
-    return HTTPStatus.OK.value
+    return HTTPException(status_code=200, detail='Обновление выполнено')
 
 @router.get('/search_card/', tags=['Card'])
 @handle_resp_errors
 async def search_card(q: Annotated[str, Query(max_length=16)]):
-    '''Обработчик. Поиск карточки по тексту'''
+    """Обработчик. Поиск карточки по тексту"""
     return await search_cards_in_bd(q)
