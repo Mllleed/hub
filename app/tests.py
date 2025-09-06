@@ -7,12 +7,6 @@ from app.base import Base
 from app.api.notes import Card, Category
 from contextlib import asynccontextmanager
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
 
 @pytest_asyncio.fixture(scope="function")
 async def async_session():
