@@ -32,10 +32,10 @@ async def get_db_transaction():
         try:
             yield session
             await session.commit()
-        except Exception:
+        except Exception as e:
             await session.rollback()
-            raise
-        finally:
+            raise e
+        finally: 
             await session.close()
 
 @asynccontextmanager
@@ -43,6 +43,9 @@ async def get_db_session():
     async with async_session() as session:
         try:
             yield session
+        except Exception as e:
+            await session.rollback()
+            raise e
         finally:
             await session.close()
 
@@ -281,7 +284,6 @@ class UserDAO:
             HTTPException в случае неудачи регистрации
         """
         async with get_db_transaction() as session:
-            user = await UserDAO.
             user = User(
                 username=userdata.username,
                 email=userdata.email,

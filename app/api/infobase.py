@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from app.api.template import templates
-from app.api.schemas import UserCreate
+from app.api.schemas import UserCreate, UserIn
 from app.site_data import menu_items
 from app.DAO import CardDAO, UserDAO
 router = APIRouter()
@@ -29,9 +29,9 @@ async def reg_form(
     return user
 
 @router.get('/login/', tags=['pages'],
-            response_model=User)
+            response_model=UserIn)
 async def login(authenticate_user: Request):
-
+    pass
 @router.get('/profile', tags=['pages'],
             response_class=HTMLResponse)
 async def index(request: Request):
