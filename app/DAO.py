@@ -53,7 +53,7 @@ async def get_db_session():
 class CardDAO:
     @classmethod
     @handle_db_errors
-    async def get_card_by_id_from_bd(cls, card_id: int) -> Card:
+    async def get_card_by_id_from_bd(cls, card_id: int, owner_id: int) -> Card:
         """Возвращает карточку id
 
         Args:
@@ -68,7 +68,7 @@ class CardDAO:
         async with get_db_session() as session:
             stmt = select(Card).options(
                 selectinload(Card.category),
-                selectinload(Card.tags)).where(Card.id == card_id)
+                selectinload(Card.tags)).where(and_(Card.id == card_id, Card.owner_id == owner_id))
             logger.debug(stmt)
             result = await session.execute(stmt)
             card = result.scalar_one_or_none()
@@ -78,12 +78,12 @@ class CardDAO:
 
     @classmethod
     @handle_db_errors
-    async def get_cards_from_bd(cls, order: str = 'desc',
+    async def get_cards_from_bd(cls, owner_id: int, order: str = 'desc',
                                 sort_by: str = 'created_at',
                                 cat: Optional[str] = None,
                                 tag: Optional[str] = None,
                                 limit: int = 5,
-                                offset: int = 0) -> list[Card]:
+                                offset: int = 0,) -> list[Card]:
         """Получает все записи из БД и сортирует.
 
         Args:
@@ -96,7 +96,7 @@ class CardDAO:
         Raises:
             HTTPException: При ошибках валидации или БД
         """
-        valid_columns = {col.key for col in inspect(Card).mapper.column_attrs()}
+        valid_columns = {col.key for col in inspect(Card).mapper.column_attrs}
 
         if sort_by not in valid_columns:
             raise HTTPException(
@@ -106,7 +106,7 @@ class CardDAO:
         async with get_db_session() as session:
             stmt = select(Card).options(
                 selectinload(Card.category),
-                selectinload(Card.tags))
+                selectinload(Card.tags)).where(Card.owner_id == owner_id)
             if cat and tag:
                 stmt = (
                     stmt.join(Card.category)
@@ -127,7 +127,7 @@ class CardDAO:
         return cards
     @classmethod
     @handle_db_errors
-    async def create_card_in_bd(cls, title: str, subtitle: str, content: str,
+    async def create_card_in_bd(cls, title: str, subtitle: str, content: str, owner_id: int,
                                 attr: Optional[dict] = None) -> Card:
         """Создает новую карточку в БД.
 
@@ -159,16 +159,16 @@ class CardDAO:
                     ]
 
             card = Card(title=title, subtitle=subtitle, content=content,
-                        category=category, tags=tag_objs)
+                        category=category, tags=tag_objs, owner_id=owner_id)
 
             session.add(card)
-            session.flush()
+            await session.flush()
         logger.info(f'Запись с {card.id} создана')
         return card
 
     @classmethod
     @handle_db_errors
-    async def delete_card_from_bd(cls, card_id: int) -> Card:
+    async def delete_card_from_bd(cls, card_id: int, owner_id: int) -> Card:
         """Удаляет карточку в БД.
 
         Args:
@@ -179,18 +179,20 @@ class CardDAO:
             HTTPException: При ошибках валидации или БД
         """
         async with get_db_transaction() as session:
-            card = await session.get(Card, card_id)
+            stmt = select(Card).where(Card.id == card_id, Card.owner_id == owner_id)
+            card = await session.execute(stmt)
+            card = card.scalar_one_or_none()
             if card is None:
                 logger.warning(f'Запись с {card_id} не найдена')
                 raise HTTPException(status_code=404, detail='Карточка не найдена')
+            await session.delete(card)
 
-            session.delete(card)
         logger.info(f'Запись с {card_id} удалена')
         return card
 
     @classmethod
     @handle_db_errors
-    async def update_card_in_bd(cls, card_id: int, data: Optional[CardContent] = None,
+    async def update_card_in_bd(cls, card_id: int, owner_id: int, data: Optional[CardContent] = None,
                                 meta: Optional[CardMeta] = None) -> bool:
         """Обновляет карточку в БД.
 
@@ -209,7 +211,11 @@ class CardDAO:
             HTTPException: При ошибках валидации или БД
         """
         async with get_db_transaction() as session:
-            card = await session.get(Card, card_id)
+            stmt = (select(Card)
+                    .options(selectinload(Card.tags), selectinload(Card.category))
+                    .where(Card.id == card_id, Card.owner_id == owner_id))
+            card = await session.execute(stmt)
+            card = card.scalar_one_or_none()
             if not card:
                 return False
 
@@ -237,7 +243,7 @@ class CardDAO:
 
     @classmethod
     @handle_db_errors
-    async def search_cards_in_bd(cls, q: str) -> list[Card]:
+    async def search_cards_in_bd(cls, q: str, owner_id: int) -> list[Card]:
         """Поиск карточки по тексту(ilike)
 
             Args:
@@ -248,8 +254,9 @@ class CardDAO:
                 list[Card]
         """
         async with get_db_session() as session:
+            stmt = select(Card).where(Card.owner_id == owner_id)
             stmt = (
-                select(Card)
+                stmt
                 .options(selectinload(Card.category), selectinload(Card.tags))
                 .outerjoin(Card.category)
                 .outerjoin(Card.tags)

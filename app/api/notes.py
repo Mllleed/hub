@@ -34,7 +34,7 @@ class Card(Base):
 
     owner_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id'))
 
-    category_id: Mapped[int] = mapped_column(Integer, ForeignKey('category.id', ondelete='SET NULL'))
+    category_id: Mapped[int | None] = mapped_column(Integer, ForeignKey('category.id', ondelete='SET NULL'), nullable=True)
     category: Mapped[Optional["Category"]] = relationship('Category', back_populates='cards')
 
     tags: Mapped[Optional[list["Tag"]]] = relationship(
