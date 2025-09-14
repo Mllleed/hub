@@ -5,8 +5,9 @@ from sqlalchemy import select, asc, desc, inspect, or_, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from app.db import async_session
-from app.api.schemas import CardContent, CardMeta, UserCreate, UserIn
+from app.api.schemas import CardContent, CardMeta, UserCreate
 from app.api.notes import Card, Category, Tag, User
+from fastapi.security import OAuth2PasswordRequestForm
 from contextlib import asynccontextmanager
 from typing import Optional
 import logging
@@ -54,11 +55,11 @@ class CardDAO:
     @classmethod
     @handle_db_errors
     async def get_card_by_id_from_bd(cls, card_id: int, owner_id: int) -> Card:
-        """Возвращает карточку id
+        """Возвращает карточку id.
 
         Args:
             card_id: id карточки
-
+            owner_id: id пользователя
         Returns:
             Card: Карточка
         Raises:
@@ -91,6 +92,9 @@ class CardDAO:
             sort_by: Параметр сортировки
             cat: Категория
             tag: тэг
+            owner_id: id пользователя
+            limit: ограничение количества карт
+            offset: смещение
         Returns:
             cards: Отсортированный список записей
         Raises:
@@ -138,6 +142,7 @@ class CardDAO:
             attr: Словарь с метаданным
                 category: Категория
                 tag: тэг
+            owner_id: id пользователя
         Returns:
             Card: Созданный объект карточки
 
@@ -173,6 +178,7 @@ class CardDAO:
 
         Args:
             card_id: Первичный ключ записи
+            owner_id: id пользователя
         Returns:
             Bool
         Raises:
@@ -202,6 +208,7 @@ class CardDAO:
                 title: Заголовок карточки
                 subtitle: Подзаголовок
                 content: Содержание
+            owner_id: id пользователя
             meta:
                 category: Категория
                 tags: Список тэгов
@@ -244,10 +251,11 @@ class CardDAO:
     @classmethod
     @handle_db_errors
     async def search_cards_in_bd(cls, q: str, owner_id: int) -> list[Card]:
-        """Поиск карточки по тексту(ilike)
+        """Поиск карточки по тексту(ilike).
 
             Args:
                 q: Текст
+                owner_id: id пользователя
             Raises:
                 HTTPExecption: Если карточка не найдена
             Returns:
@@ -278,7 +286,7 @@ class UserDAO:
     @classmethod
     @handle_db_errors
     async def register_user_in_db(cls, userdata: UserCreate) -> User:
-        """Регистрирует нового пользователя
+        """Регистрирует нового пользователя.
 
         Args:
             userdata:
@@ -302,8 +310,8 @@ class UserDAO:
 
     @classmethod
     @handle_db_errors
-    async def login_user_in_db(cls, userdata: UserIn) -> dict:
-        """ Аутентификация/Авторизация пользователя
+    async def login_user_in_db(cls, userdata: OAuth2PasswordRequestForm) -> dict:
+        """ Аутентификация/Авторизация пользователя.
 
         Args:
             userdata:

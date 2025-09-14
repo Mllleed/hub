@@ -3,9 +3,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import select
 from app.api.notes import Category, Tag
 from passlib.context import CryptContext
-from jose import jwt, JWTError
+from jose import jwt, JWTError, ExpiredSignatureError
 from datetime import datetime, timedelta, timezone
-from fastapi import Request, HTTPException, Depends
+from fastapi import HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='action/login/')
@@ -93,5 +93,5 @@ class Service:
                         detail="Invalid_token")
             return int(owner_id)
         except JWTError:
-            raise HTTPException(status_code=401, detail='Invalid_token')
+            raise ExpiredSignatureError(status_code=401, detail='Invalid_token')
 

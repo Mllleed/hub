@@ -4,4 +4,4 @@ echo ' Запуск тестов'
 
 source ./.venv/bin/activate
 
-pytest app/tests.py
+pytest --cache-clear app/tests.py

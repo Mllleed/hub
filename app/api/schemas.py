@@ -7,7 +7,6 @@ class CookieMeta(BaseModel):
     acces_token: str
     bearer: str
 
-
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -16,6 +15,10 @@ class UserCreate(BaseModel):
 class UserIn(BaseModel):
     username: str
     password: str
+
+class UserLogin(BaseModel):
+    id: int
+    token: str
 
 class UserOut(BaseModel):
     id: int
