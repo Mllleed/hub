@@ -172,7 +172,6 @@ class CardDAO:
         return card
 
     @classmethod
-    @handle_db_errors
     async def delete_card_from_bd(cls, card_id: int, owner_id: int) -> Card:
         """Удаляет карточку в БД.
 
