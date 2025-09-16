@@ -48,7 +48,7 @@ async def login(userdata: Annotated[OAuth2PasswordRequestForm, Depends()]):
         key='access_token',
         value=result['access_token'],
         httponly=True,
-        secure=True,
+        secure=False,
         samesite='strict',
         max_age=60 * 15,
     )

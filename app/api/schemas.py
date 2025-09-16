@@ -38,6 +38,10 @@ class CardMeta(BaseModel):
     tag: Optional[List[str]] = Field(default=None)
 
 
+class CardRequest(BaseModel):
+    data: CardContent
+    meta: CardMeta
+
 class CategoryResponse(BaseModel):
     id: int
     cat_name: Optional[str] = None

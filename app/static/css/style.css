@@ -2,7 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  background-color: #1f2426;
+  background-color: #1f2426; 
   color: white;
 }
 
@@ -10,11 +10,16 @@ a {
 text-decoration: none;
 color: white;
 }
+
 ul {
   list-style: none; /* убираем маркеры */
   margin: 0;             /* убираем отступ сверху/снизу */
   padding: 0;            /* убираем внутренний отступ слева */
 }
+
+li {
+padding: 8px 12px;
+margin-bottom: 6px;}
 
 html, body {
   height: 100%;}
@@ -67,7 +72,7 @@ text-align: left;}
 width: 83%;
 height: 100%;
 border-right: 0.6px solid rgb(194, 197, 204, 0.2);
-background: #161a1b;
+background-color: #161a1b;
 padding: 5px 10px;
 }
 
@@ -76,9 +81,16 @@ background-color: #161a1b;
 }
 
 .cards-list {
-    margin-bottom: 5px;
+    margin-bottom: 20px;
     border-radius: 10px;
-    list-style: none;
     padding-left: 0;
-    border
+    background-color: #34393B;
 }
+
+.item-card-list {
+  background-color: #161a1b;
+}
+
+.createButton {
+  display: none;
+  margin-top: 10px;}

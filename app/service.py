@@ -5,7 +5,7 @@ from app.api.notes import Category, Tag
 from passlib.context import CryptContext
 from jose import jwt, JWTError, ExpiredSignatureError
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, Cookie
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='action/login/')
@@ -66,7 +66,7 @@ class Service:
     @staticmethod
     async def create_access_token(data: dict, expires_delta: timedelta = None):
         to_encode = data.copy()
-        expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=60))
+        expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=100))
         to_encode.update({'exp': expire})
         return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     
@@ -83,9 +83,9 @@ class Service:
                     )
 
     @staticmethod
-    async def get_current_owner_id(token: str = Depends(oauth2_scheme)) -> int:
+    async def get_current_owner_id(access_token: str | None = Cookie(default=None)) -> int:
         try:
-            payload = await Service.decode_access_token(token)
+            payload = await Service.decode_access_token(access_token)
             owner_id: int = payload.get("sub")
             if owner_id is None:
                 raise HTTPException(

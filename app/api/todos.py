@@ -4,7 +4,7 @@ from functools import wraps
 from app.DAO import CardDAO, UserDAO
 from fastapi import APIRouter, Query, Body, Path, HTTPException, Depends
 from typing import Optional, Annotated, List, Any
-from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, CookieMeta
+from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, CookieMeta, CardRequest
 from fastapi.responses import JSONResponse
 from app.service import Service, oauth2_scheme
 from fastapi.security import OAuth2PasswordRequestForm
@@ -60,8 +60,8 @@ async def login_user(userdata: Annotated[OAuth2PasswordRequestForm, Depends()]) 
             key='access_token',
             value=result['access_token'],
             httponly=True,
-            secure=True,
-            samesite='strict',
+            secure=False,
+            samesite=None,
             max_age=60 * 15,
             )
     return response
@@ -97,12 +97,11 @@ async def get_cards(owner_id: Annotated[int, Depends(Service.get_current_owner_i
              response_model=CardResponse,
              status_code=201)
 @handle_resp_errors
-async def create_card(data: Annotated[CardContent, Body(embed=True)],
-                      meta: Annotated[CardMeta, Query()], # Да, можно было запихнуть в body, но что вы мне сделаете, я в другом городе
+async def create_card(payload: CardRequest,
                       owner_id: int = Depends(Service.get_current_owner_id)):
     """Обработчик. Создает карточку в базе данных."""
-    card = await CardDAO.create_card_in_bd(data.title, data.subtitle, data.content, owner_id,
-                                   meta.model_dump())
+
+    card = await CardDAO.create_card_in_bd(payload.data.title, payload.data.subtitle, payload.data.content, owner_id, payload.meta.model_dump())
     return card 
 
 

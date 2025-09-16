@@ -2,10 +2,68 @@
 
 {% block  title%} Карточки {% endblock%}
 {% block main %}
-<h2 class='card-title'> КАРТОЧКИ МОИ ЙОУ</h2>
-<ul>
+<h2 class='card-title'> Карточки</h2>
+<div> 
+  <button onclick=toggleForm()> Создать запись </button></div>
+
+  <div id=createContainer class=createButton>
+    <form method=POST action='/action/create_card/'>
+      <label> Заголовок</label><br>
+      <input type='text' name='title'><br>
+
+      <label> Подзаголовок </label><br>
+      <input type='text' name='subtitle'><br>
+
+      <label> Содержание </label><br>
+      <textarea name='content'> </textarea><br>
+
+      <button type='submit'> Сохранить </button>  
+      </form>
+  </div>
+
+<ul class='item-card-list'>
 {% for user in cards -%}
-  <li class='cards-list'>{{ user.title}} </li>
-</ul>
+  <li class='cards-list'>{{ user.title }} </li>
 {% endfor %}
+</ul>
 {%- endblock %}
+
+{% block scripts %}
+<script>
+  function toggleForm() {
+    const form = document.getElementById('createContainer');
+    form.style.display = (form.style.display === 'none') ? 'block' : 'none';
+  };
+
+  document.getElementById("createContainer").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const payload = {
+        data: {
+          title: data.title,
+          subtitle: data.subtitle,
+          content: data.content
+              },
+        meta: {
+        cat: data.cat,
+        tag: data.tag ? data.tag.split(',') : []
+        }
+      };
+
+    const response = await fetch("http://127.0.0.1:8000/action/create_card/", {
+      method: "POST",
+      headers: {
+          "Content-Type": "application/json",
+                },
+      body: JSON.stringify(payload),
+      credentials: "include"
+    });
+
+    const result = await response.json();
+    console.log(result);
+  });
+</script>
+
+{% endblock %}
