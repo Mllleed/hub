@@ -70,3 +70,5 @@ class FilterParams(BaseModel):
     sort_by: Literal['created_at', 'id', 'title', 'subtitle'] = 'id'
     cat: Optional[str] = None
     tag: Optional[str] = None
+    limit: Optional[int] = 5
+    offset: Optional[int] = 0

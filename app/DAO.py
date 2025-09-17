@@ -101,7 +101,6 @@ class CardDAO:
             HTTPException: При ошибках валидации или БД
         """
         valid_columns = {col.key for col in inspect(Card).mapper.column_attrs}
-
         if sort_by not in valid_columns:
             raise HTTPException(
                 status_code=400,

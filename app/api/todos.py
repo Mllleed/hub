@@ -84,7 +84,6 @@ async def get_card_by_id(card_id: Annotated[Optional[int], Path(...,)],
 async def get_cards(owner_id: Annotated[int, Depends(Service.get_current_owner_id)],
                     sort_param: Annotated[FilterParams, Query()] = None):
     """Обработчик. Получает сортированный список карточек."""
-    print(sort_param)
     if sort_param:
         logger.info(sort_param)
     data = sort_param.model_dump()
