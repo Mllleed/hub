@@ -1,14 +1,18 @@
 import logging
-from fastapi import APIRouter, Request, Form, Depends, HTTPException
+
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.security import OAuth2PasswordRequestForm
+
 from app.api.template import templates
-from app.api.schemas import UserCreate
+from app.api.schemas import UserCreate, UserAuth, as_form
 from app.site_data import menu_items
 from app.DAO import CardDAO, UserDAO
+
 from pydantic import EmailStr
+
 from typing import Annotated
-from app.service import Service
+
+from app.service import Service, auth
 
 router = APIRouter()
 
@@ -40,18 +44,16 @@ async def log(request: Request):
     return templates.TemplateResponse('login_form.html', {'request': request})
 
 @router.post('/login_form/', tags=['pages'])
-async def login(userdata: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    result = await UserDAO.login_user_in_db(userdata)
+async def login(userdata: Annotated[UserAuth, Depends(as_form)]):
+    user_id = await UserDAO.login_user_in_db(userdata)
     response = RedirectResponse(url='/cards/', status_code=303)
+    
+    access_token = auth.create_access_token(uid=str(user_id['user_id']))
+    refresh_token = auth.create_refresh_token(uid=str(user_id['user_id']))
 
-    response.set_cookie(
-        key='access_token',
-        value=result['access_token'],
-        httponly=True,
-        secure=False,
-        samesite='strict',
-        max_age=60 * 15,
-    )
+    auth.set_access_cookies(token=access_token, response=response)
+    auth.set_refresh_cookies(token=refresh_token, response=response)
+
     return response
 
 
@@ -63,13 +65,10 @@ async def index(request: Request):
 
 @router.get('/cards/', tags=['pages'],
            response_class=HTMLResponse)
-async def cards(request: Request):
-    token = request.cookies.get('access_token')
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    owner_id = await Service.get_current_owner_id(token)
-    card_list = await CardDAO.get_cards_from_bd(owner_id=owner_id)
+async def cards(request: Request, user=Depends(auth.get_current_owner_id)):
+    if not isinstance(user, (str, int)):
+        return user
+    card_list = await CardDAO.get_cards_from_bd(owner_id=user)
     template = templates.TemplateResponse('user.html', {'request': request,
                                                         'cards': card_list})
     return template

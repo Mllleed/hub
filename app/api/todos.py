@@ -1,13 +1,20 @@
 import traceback
+
 import logging
+
 from functools import wraps
-from app.DAO import CardDAO, UserDAO
+
 from fastapi import APIRouter, Query, Body, Path, HTTPException, Depends
-from typing import Optional, Annotated, List, Any
-from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, CookieMeta, CardRequest
-from fastapi.responses import JSONResponse
-from app.service import Service, oauth2_scheme
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import JSONResponse
+
+from typing import Optional, Annotated, List, Any
+
+from app.api.schemas import CardContent, FilterParams, CardMeta, CardResponse, UserCreate, UserOut, CookieMeta, CardRequest
+from app.service import auth, oauth2_scheme
+from app.DAO import CardDAO, UserDAO
+
+
 
 router = APIRouter()
 
@@ -71,7 +78,7 @@ async def login_user(userdata: Annotated[OAuth2PasswordRequestForm, Depends()]) 
            response_model=CardResponse)
 @handle_resp_errors
 async def get_card_by_id(card_id: Annotated[Optional[int], Path(...,)],
-                         owner_id: Annotated[int, Depends(Service.get_current_owner_id)]):
+                         owner_id: Annotated[int, Depends(auth.get_current_owner_id)]):
     """Обработчик. Возвращает карточку по id."""
     card = await CardDAO.get_card_by_id_from_bd(card_id, owner_id)
     return card
@@ -81,7 +88,7 @@ async def get_card_by_id(card_id: Annotated[Optional[int], Path(...,)],
             tags=['Card'],
             response_model=List[CardResponse])
 @handle_resp_errors
-async def get_cards(owner_id: Annotated[int, Depends(Service.get_current_owner_id)],
+async def get_cards(owner_id: Annotated[int, Depends(auth.get_current_owner_id)],
                     sort_param: Annotated[FilterParams, Query()] = None):
     """Обработчик. Получает сортированный список карточек."""
     if sort_param:
@@ -97,7 +104,7 @@ async def get_cards(owner_id: Annotated[int, Depends(Service.get_current_owner_i
              status_code=201)
 @handle_resp_errors
 async def create_card(payload: CardRequest,
-                      owner_id: int = Depends(Service.get_current_owner_id)):
+                      owner_id: int = Depends(auth.get_current_owner_id)):
     """Обработчик. Создает карточку в базе данных."""
 
     card = await CardDAO.create_card_in_bd(payload.data.title, payload.data.subtitle, payload.data.content, owner_id, payload.meta.model_dump())
@@ -107,7 +114,7 @@ async def create_card(payload: CardRequest,
 @router.delete('/delete_card/{card_id}', tags=['Card'])
 @handle_resp_errors
 async def delete_card(card_id: Annotated[int, Path(...)],
-                      owner_id: Annotated[int, Depends(Service.get_current_owner_id)]):
+                      owner_id: Annotated[int, Depends(auth.get_current_owner_id)]):
     """Обработчик. Удаляет запись по первичному ключу."""
     await CardDAO.delete_card_from_bd(card_id, owner_id)
     return HTTPException(status_code=204, detail='Картчка удалена')
@@ -116,7 +123,7 @@ async def delete_card(card_id: Annotated[int, Path(...)],
 @router.patch('/update_card/{card_id}', tags=['Card'])
 @handle_resp_errors
 async def update_card(card_id: Annotated[int, Path(...)],
-                      owner_id: Annotated[int, Depends(Service.get_current_owner_id)],
+                      owner_id: Annotated[int, Depends(auth.get_current_owner_id)],
                       data: Annotated[CardContent, Body(embed=True)] = None,
                       meta: Optional[CardMeta] = None):
     """Обрабочтик. Частичное обновление записи."""
@@ -126,6 +133,6 @@ async def update_card(card_id: Annotated[int, Path(...)],
 @router.get('/search_card/', tags=['Card'])
 @handle_resp_errors
 async def search_card(q: Annotated[str, Query(max_length=16)],
-                      owner_id: Annotated[int, Depends(Service.get_current_owner_id)]):
+                      owner_id: Annotated[int, Depends(auth.get_current_owner_id)]):
     """Обработчик. Поиск карточки по тексту"""
     return await CardDAO.search_cards_in_bd(q, owner_id)

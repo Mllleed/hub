@@ -1,16 +1,24 @@
-from app.service import Service
+from app.service import Service, auth
+
 from fastapi import HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
+
 from functools import wraps
+
 from sqlalchemy import select, asc, desc, inspect, or_, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
+
 from app.db import async_session
-from app.api.schemas import CardContent, CardMeta, UserCreate
+from app.api.schemas import CardContent, CardMeta, UserCreate, UserAuth
 from app.api.notes import Card, Category, Tag, User
-from fastapi.security import OAuth2PasswordRequestForm
+
 from contextlib import asynccontextmanager
+
 from typing import Optional
+
 import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -308,7 +316,7 @@ class UserDAO:
 
     @classmethod
     @handle_db_errors
-    async def login_user_in_db(cls, userdata: OAuth2PasswordRequestForm) -> dict:
+    async def login_user_in_db(cls, userdata: UserAuth) -> dict:
         """ Аутентификация/Авторизация пользователя.
 
         Args:
@@ -326,8 +334,5 @@ class UserDAO:
             user = result.scalars().first()
         if not user or not await Service.verify_method(userdata.password, user.hashed_password):
             raise HTTPException(status_code=401, detail='Неверный логин или пароль')
-
-        token = await Service.create_access_token(data={'sub': str(user.id)})
-        return {'access_token': token, 'token_type': 'bearer'}
-
+        return {'user_id': user.id, 'verified': True}
 
