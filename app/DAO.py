@@ -1,7 +1,6 @@
-from app.service import Service, auth
+from app.service import Service
 
 from fastapi import HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
 
 from functools import wraps
 
@@ -13,9 +12,10 @@ from app.db import async_session
 from app.api.schemas import CardContent, CardMeta, UserCreate, UserAuth
 from app.api.notes import Card, Category, Tag, User
 
+
 from contextlib import asynccontextmanager
 
-from typing import Optional
+from typing import Optional, Any
 
 import logging
 
@@ -108,6 +108,7 @@ class CardDAO:
         Raises:
             HTTPException: При ошибках валидации или БД
         """
+        print(owner_id)
         valid_columns = {col.key for col in inspect(Card).mapper.column_attrs}
         if sort_by not in valid_columns:
             raise HTTPException(
@@ -291,6 +292,14 @@ class CardDAO:
 class UserDAO:
     @classmethod
     @handle_db_errors
+    async def get_user_by_id(cls, uid: str) -> Any:
+        async with get_db_session() as session:
+            stmt = select(User).where(User.id == int(uid))
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+
+    @classmethod
+    @handle_db_errors
     async def register_user_in_db(cls, userdata: UserCreate) -> User:
         """Регистрирует нового пользователя.
 
@@ -316,7 +325,7 @@ class UserDAO:
 
     @classmethod
     @handle_db_errors
-    async def login_user_in_db(cls, userdata: UserAuth) -> dict:
+    async def login_user_in_db(cls, userdata: UserAuth) -> int:
         """ Аутентификация/Авторизация пользователя.
 
         Args:
@@ -334,5 +343,5 @@ class UserDAO:
             user = result.scalars().first()
         if not user or not await Service.verify_method(userdata.password, user.hashed_password):
             raise HTTPException(status_code=401, detail='Неверный логин или пароль')
-        return {'user_id': user.id, 'verified': True}
+        return int(user.id)
 
